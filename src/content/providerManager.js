@@ -229,7 +229,8 @@
       return preset.parse(data);
     }
 
-    async chatStream(messages, opts = {}) {
+    async chatStream(messages, opts, onChunk) {
+      // onChunk callback receives each text fragment as it arrives
       const cfg = { ...this.config, ...opts };
       const preset = this.getPreset();
 
@@ -250,6 +251,7 @@
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
+      let fullText = '';
 
       while (true) {
         const { done, value } = await reader.read();
@@ -267,11 +269,17 @@
               const d = JSON.parse(line.slice(6));
               const chunk =
                 d.choices?.[0]?.delta?.content || '';
-              if (chunk) yield chunk;
+              if (chunk) {
+                fullText += chunk;
+                if (typeof onChunk === 'function') {
+                  onChunk(chunk, fullText);
+                }
+              }
             } catch {}
           }
         }
       }
+      return fullText;
     }
 
     async fetchModels() {
