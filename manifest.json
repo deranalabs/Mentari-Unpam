@@ -23,7 +23,7 @@
     {
       "matches": ["https://mentari.unpam.ac.id/*"],
       "exclude_matches": ["https://mentari.unpam.ac.id/login"],
-      "js": ["src/content/apiKeyManager.js", "src/content/content.js", "src/content/gemini.js"]
+      "js": ["src/content/content.js"]
     },
     {
       "matches": ["https://mentari.unpam.ac.id/login"],

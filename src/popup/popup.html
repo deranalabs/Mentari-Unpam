@@ -8,7 +8,7 @@
       body {
         font-family: Arial, sans-serif;
         text-align: center;
-        width: 220px;
+        width: 200px;
         padding: 10px;
       }
       button {
@@ -23,26 +23,11 @@
       button:hover {
         background: #0056b3;
       }
-      #aiSettings {
-        background: #238636;
-        margin-top: 6px;
-      }
-      #aiSettings:hover {
-        background: #1a6b29;
-      }
     </style>
   </head>
   <body>
     <h3>Jalankan Token</h3>
     <button id="runToken">Jalankan</button>
-    <button id="aiSettings">🤖 AI Settings</button>
     <script src="script.js"></script>
-    <script>
-      document.getElementById('aiSettings').onclick = function () {
-        chrome.tabs.create({
-          url: chrome.runtime.getURL('src/popup/ai-settings.html'),
-        });
-      };
-    </script>
   </body>
 </html>
