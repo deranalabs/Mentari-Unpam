@@ -12,14 +12,143 @@
     });
   }
 
+  // === FIX 1: Inject CSS to FORCE HIDE old Gemini popup ===
+  function injectSuppressCSS() {
+    const style = document.createElement('style');
+    style.id = 'mentari-ai-suppress';
+    style.textContent = `
+      /* Hide anything that looks like the old Gemini API key popup */
+      div:has(> *:is(h1,h2,h3,h4,p,span,label):not(:empty)) {
+        /* We use a more targeted approach below */
+      }
+
+      /* Force hide overlay elements with API key text */
+      [style*="position: fixed"][style*="z-index"],
+      [style*="position:fixed"][style*="z-index"] {
+        /* Will be checked by observer */
+      }
+    `;
+
+    // More effective: targeted style that matches the popup by content
+    // We inject a comprehensive hide rule
+    const targetedStyle = document.createElement('style');
+    targetedStyle.id = 'mentari-ai-popup-blocker';
+    targetedStyle.textContent = `
+      /* Block old apiKeyManager popup — aggressive targeting */
+      div[style*="position: fixed"],
+      div[style*="position:fixed"],
+      div[style*="position: absolute"],
+      div[style*="position:absolute"] {
+        /* Check via class/attribute below */
+      }
+    `;
+    document.documentElement.appendChild(style);
+
+    // Actually the most effective: use CSS custom property filter
+    // to find and hide elements containing specific text
+    const blockerStyle = document.createElement('style');
+    blockerStyle.id = 'mentari-ai-blocker-v2';
+    blockerStyle.textContent = `
+      #mentari-gemini-blocker {
+        display: none !important;
+        visibility: hidden !important;
+        opacity: 0 !important;
+        pointer-events: none !important;
+        height: 0 !important;
+        overflow: hidden !important;
+      }
+    `;
+    document.head.appendChild(blockerStyle);
+  }
+
+  function startPopupBlocker() {
+    // Scan and tag elements containing Gemini API key text
+    function scanAndBlock() {
+      const allElements = document.querySelectorAll(
+        'div, section, dialog, form, aside, nav, header, footer, main, article'
+      );
+
+      for (const el of allElements) {
+        // Skip our own elements
+        if (el.id?.startsWith('mentari-ai')) continue;
+        if (el.classList?.contains('mentari-')) continue;
+
+        // Check direct text content (not children's children)
+        const directText = el.textContent || '';
+
+        if (
+          directText.includes('Gemini API Key') &&
+          directText.includes('Google AI Studio') &&
+          directText.includes('Simpan')
+        ) {
+          el.id = 'mentari-gemini-blocker';
+          el.style.display = 'none';
+          el.style.visibility = 'hidden';
+          console.log(
+            '[MentariAI] Blocked Gemini popup:',
+            el.tagName,
+            el.className
+          );
+        }
+
+        // Also block backdrop/overlay behind it
+        if (
+          el.style.position === 'fixed' &&
+          el.style.zIndex &&
+          parseInt(el.style.zIndex) > 9990 &&
+          el.querySelector(
+            '[id="mentari-gemini-blocker"]'
+          )
+        ) {
+          el.style.display = 'none';
+        }
+      }
+    }
+
+    // Run immediately
+    scanAndBlock();
+
+    // Run on DOM changes
+    const observer = new MutationObserver(() => {
+      scanAndBlock();
+    });
+
+    // Start observing as early as possible
+    if (document.body) {
+      observer.observe(document.body, {
+        childList: true,
+        subtree: true,
+      });
+    } else {
+      // body not ready yet, wait
+      document.addEventListener('DOMContentLoaded', () => {
+        scanAndBlock();
+        observer.observe(document.body, {
+          childList: true,
+          subtree: true,
+        });
+      });
+    }
+
+    // Also run periodically for the first 5 seconds
+    let runs = 0;
+    const interval = setInterval(() => {
+      scanAndBlock();
+      runs++;
+      if (runs > 20) clearInterval(interval);
+    }, 250);
+  }
+
   // === Floating AI Button ===
   function injectFloatingButton() {
+    if (document.getElementById('mentari-ai-fab')) return;
+
     const btn = document.createElement('div');
     btn.id = 'mentari-ai-fab';
     btn.innerHTML = '🤖';
     btn.title = 'Mentari AI Assistant';
     btn.style.cssText = `
-      position: fixed; bottom: 24px; right: 24px; z-index: 99999;
+      position: fixed; bottom: 24px; right: 24px; z-index: 2147483647;
       width: 48px; height: 48px; border-radius: 50%;
       background: linear-gradient(135deg, #667eea, #764ba2);
       display: flex; align-items: center; justify-content: center;
@@ -45,7 +174,7 @@
     panel = document.createElement('div');
     panel.id = 'mentari-ai-panel';
     panel.style.cssText = `
-      position: fixed; bottom: 80px; right: 24px; z-index: 99998;
+      position: fixed; bottom: 80px; right: 24px; z-index: 2147483646;
       width: 380px; height: 500px; border-radius: 12px;
       background: #0d1117; border: 1px solid #30363d;
       display: flex; flex-direction: column;
@@ -54,9 +183,9 @@
     `;
 
     const ai = window.__mentariAI;
-    const providerLabel = ai?.config
+    const providerLabel = ai?.config?.apiKey
       ? `${ai.presets[ai.config.provider]?.icon || '⚙️'} ${ai.config.provider} / ${ai.config.model}`
-      : 'Not configured';
+      : '⚠️ Klik ⚙️ untuk konfigurasi';
 
     panel.innerHTML = `
       <div style="padding:12px 16px;border-bottom:1px solid #30363d;
@@ -111,7 +240,10 @@
     };
 
     document.getElementById('mentari-ai-settings-btn').onclick = () => {
-      chrome.runtime.sendMessage({ action: 'openPopup' });
+      window.open(
+        chrome.runtime.getURL('src/popup/ai-settings.html'),
+        '_blank'
+      );
     };
 
     const input = document.getElementById('mentari-ai-input');
@@ -181,7 +313,6 @@
     msgs.scrollTop = msgs.scrollHeight;
   }
 
-  // Simple markdown-like formatting
   function formatMarkdown(text) {
     return text
       .replace(/&/g, '&amp;')
@@ -189,11 +320,13 @@
       .replace(/>/g, '&gt;')
       .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
       .replace(/\*(.*?)\*/g, '<em>$1</em>')
-      .replace(/`([^`]+)`/g, '<code style="background:#21262d;padding:1px 4px;border-radius:3px">$1</code>')
+      .replace(
+        /`([^`]+)`/g,
+        '<code style="background:#21262d;padding:1px 4px;border-radius:3px">$1</code>'
+      )
       .replace(/\n/g, '<br>');
   }
 
-  // === Page Context Detection ===
   function getPageContextHint() {
     const url = window.location.pathname;
     if (url.includes('/exam/')) return 'Halaman kuis/ujian';
@@ -203,67 +336,12 @@
     return '';
   }
 
-  // === Suppress old apiKeyManager popup ===
-  function suppressOldGeminiPopup() {
-    // Watch for the old Gemini API key popup/modal
-    const observer = new MutationObserver(() => {
-      // Strategy 1: Hide by text content
-      document.querySelectorAll('div, section, dialog, form').forEach((el) => {
-        const text = el.innerText || '';
-        if (
-          text.includes('Gemini API Key') &&
-          text.includes('Google AI Studio') &&
-          el.offsetHeight > 100
-        ) {
-          el.style.display = 'none';
-          console.log('[MentariAI] Suppressed old Gemini API key popup');
-        }
-      });
+  // === INIT — run as early as possible ===
+  injectSuppressCSS();
+  startPopupBlocker();
 
-      // Strategy 2: Hide overlays/modals that contain API key input
-      document.querySelectorAll('[class*="modal"], [class*="popup"], [class*="overlay"], [class*="dialog"]').forEach((el) => {
-        const text = el.innerText || '';
-        if (
-          text.includes('AIza') &&
-          text.includes('Simpan')
-        ) {
-          el.style.display = 'none';
-          console.log('[MentariAI] Suppressed old API key modal');
-        }
-      });
-
-      // Strategy 3: Remove backdrop/overlay behind old popup
-      document.querySelectorAll('[class*="backdrop"], [class*="modal-backdrop"]').forEach((el) => {
-        // Check if nearby sibling is our hidden popup
-        el.style.display = 'none';
-      });
-    });
-
-    observer.observe(document.body, {
-      childList: true,
-      subtree: true,
-    });
-
-    // Also run immediately for popups already in DOM
-    setTimeout(() => {
-      document.querySelectorAll('div, section, dialog').forEach((el) => {
-        const text = el.innerText || '';
-        if (
-          text.includes('Gemini API Key') &&
-          text.includes('Google AI Studio') &&
-          el.offsetHeight > 100
-        ) {
-          el.style.display = 'none';
-          console.log('[MentariAI] Suppressed existing Gemini popup');
-        }
-      });
-    }, 500);
-  }
-
-  // === INIT ===
   waitForAI().then(() => {
     injectFloatingButton();
-    suppressOldGeminiPopup();
     console.log(
       '[MentariAI] Enhancer loaded on',
       window.location.pathname

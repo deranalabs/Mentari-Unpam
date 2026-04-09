@@ -56,7 +56,7 @@
     {
       "matches": ["https://mentari.unpam.ac.id/*"],
       "js": ["src/content/providerManager.js", "src/content/aiEnhancer.js"],
-      "run_at": "document_end"
+      "run_at": "document_start"
     },
     {
       "matches": ["https://mentari.unpam.ac.id/u-courses/*/exam/*"],

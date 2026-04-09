@@ -3,45 +3,45 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Mentari Mod</title>
+    <title>Token Runner</title>
     <style>
-      * { margin: 0; padding: 0; box-sizing: border-box; }
       body {
-        font-family: system-ui, -apple-system, sans-serif;
+        font-family: Arial, sans-serif;
         text-align: center;
-        width: 240px;
-        padding: 16px;
-        background: #0d1117;
-        color: #e6edf3;
+        width: 220px;
+        padding: 10px;
       }
-      h3 { font-size: 14px; margin-bottom: 12px; }
       button {
+        background: #007bff;
+        color: white;
         border: none;
         padding: 10px;
         width: 100%;
-        border-radius: 6px;
+        border-radius: 5px;
         cursor: pointer;
-        font-size: 13px;
-        font-weight: 600;
-        margin-bottom: 6px;
-        transition: opacity 0.15s;
       }
-      button:hover { opacity: 0.85; }
-      #runToken { background: #007bff; color: white; }
-      #aiSettings { background: #238636; color: white; }
-      .version { font-size: 10px; color: #484f58; margin-top: 8px; }
+      button:hover {
+        background: #0056b3;
+      }
+      #aiSettings {
+        background: #238636;
+        margin-top: 6px;
+      }
+      #aiSettings:hover {
+        background: #1a6b29;
+      }
     </style>
   </head>
   <body>
-    <h3>🎓 Mentari Mod v2.1</h3>
-    <button id="runToken">▶ Jalankan Token</button>
-    <button id="aiSettings">🤖 AI Provider Settings</button>
-    <div class="version">v2.1 — Multi-Provider AI</div>
+    <h3>Jalankan Token</h3>
+    <button id="runToken">Jalankan</button>
+    <button id="aiSettings">🤖 AI Settings</button>
     <script src="script.js"></script>
     <script>
-      // AI Settings button — opens the provider settings page
-      document.getElementById('aiSettings').onclick = function() {
-        chrome.tabs.create({ url: chrome.runtime.getURL('src/popup/ai-settings.html') });
+      document.getElementById('aiSettings').onclick = function () {
+        chrome.tabs.create({
+          url: chrome.runtime.getURL('src/popup/ai-settings.html'),
+        });
       };
     </script>
   </body>
