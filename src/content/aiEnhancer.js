@@ -203,9 +203,67 @@
     return '';
   }
 
+  // === Suppress old apiKeyManager popup ===
+  function suppressOldGeminiPopup() {
+    // Watch for the old Gemini API key popup/modal
+    const observer = new MutationObserver(() => {
+      // Strategy 1: Hide by text content
+      document.querySelectorAll('div, section, dialog, form').forEach((el) => {
+        const text = el.innerText || '';
+        if (
+          text.includes('Gemini API Key') &&
+          text.includes('Google AI Studio') &&
+          el.offsetHeight > 100
+        ) {
+          el.style.display = 'none';
+          console.log('[MentariAI] Suppressed old Gemini API key popup');
+        }
+      });
+
+      // Strategy 2: Hide overlays/modals that contain API key input
+      document.querySelectorAll('[class*="modal"], [class*="popup"], [class*="overlay"], [class*="dialog"]').forEach((el) => {
+        const text = el.innerText || '';
+        if (
+          text.includes('AIza') &&
+          text.includes('Simpan')
+        ) {
+          el.style.display = 'none';
+          console.log('[MentariAI] Suppressed old API key modal');
+        }
+      });
+
+      // Strategy 3: Remove backdrop/overlay behind old popup
+      document.querySelectorAll('[class*="backdrop"], [class*="modal-backdrop"]').forEach((el) => {
+        // Check if nearby sibling is our hidden popup
+        el.style.display = 'none';
+      });
+    });
+
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+    });
+
+    // Also run immediately for popups already in DOM
+    setTimeout(() => {
+      document.querySelectorAll('div, section, dialog').forEach((el) => {
+        const text = el.innerText || '';
+        if (
+          text.includes('Gemini API Key') &&
+          text.includes('Google AI Studio') &&
+          el.offsetHeight > 100
+        ) {
+          el.style.display = 'none';
+          console.log('[MentariAI] Suppressed existing Gemini popup');
+        }
+      });
+    }, 500);
+  }
+
   // === INIT ===
   waitForAI().then(() => {
     injectFloatingButton();
+    suppressOldGeminiPopup();
     console.log(
       '[MentariAI] Enhancer loaded on',
       window.location.pathname
